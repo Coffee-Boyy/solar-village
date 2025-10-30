@@ -1,14 +1,15 @@
 [Interface]
-Address = {{ wg_ip }}/24
-ListenPort = {{ wg_port }}
-PrivateKey = {{ lookup('file', '/etc/wireguard/private.key') }}
-# Optional MTU tune if needed behind VPS NATs (uncomment if seeing fragmentation)
-# MTU = 1380
+Address     = {{ wg_ip }}
+ListenPort  = {{ wg_port }}
+PrivateKey  = {{ wg_private_key }}
+# SaveConfig = true
 
-{% for peer in groups['wg_all'] if peer != inventory_hostname %}
+{% for p in wg_peers %}
+
 [Peer]
-PublicKey = {{ hostvars[peer].wg_public_key }}
-AllowedIPs = {{ hostvars[peer].wg_ip }}/32
-Endpoint = {{ hostvars[peer].ansible_host }}:{{ hostvars[peer].wg_port }}
-PersistentKeepalive = {{ wg_keepalive }}
+PublicKey   = {{ p.public_key }}
+AllowedIPs  = {{ (p.allowed_ips | list) | join(", ") }}
+{% if p.endpoint is defined %}Endpoint    = {{ p.endpoint }}{% endif %}
+{% if p.persistent_keepalive is defined %}PersistentKeepalive = {{ p.persistent_keepalive }}{% endif %}
+
 {% endfor %}

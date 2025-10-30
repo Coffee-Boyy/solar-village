@@ -28,6 +28,19 @@ It provides a realistic multi-cloud testbed — minus the cloud billing.
 
 ---
 
+## Step 0 - Install Dependencies
+
+Create a new Python virtual environment to install the Ansible CLI:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install ansible-core
+ansible --version
+```
+
+---
+
 ## 🏗️ Step 1 — Launch VMs
 
 Create four Ubuntu 24.04 VMs (2 CPU / 4 GB RAM / 30 GB disk):
@@ -47,12 +60,16 @@ Note each VM’s IP address.
 
 ## 🔑 Step 2 — Authorize SSH Access
 
+Create a personal SSH key (if you don't already have one):
+```bash
+ssh-keygen -t ed25519
+```
+
 Inject your local SSH public key into each VM:
 
 ```bash
 for h in do-a do-b hz-a hz-b; do
-  multipass transfer ~/.ssh/id_ed25519.pub $h:/home/ubuntu/id.pub
-  multipass exec $h -- bash -lc 'mkdir -p ~/.ssh && cat ~/id.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
+  multipass exec $h -- bash -c "mkdir -p /home/ubuntu/.ssh && chmod 700 /home/ubuntu/.ssh && echo '$(cat ~/.ssh/id_ed25519.pub)' >> /home/ubuntu/.ssh/authorized_keys && chmod 600 /home/ubuntu/.ssh/authorized_keys"
 done
 ```
 
@@ -100,56 +117,13 @@ Replace each `<IP_…>` with the actual Multipass IPs.
 
 ---
 
-## ⚙️ Step 4 — Global Variables
-
-`ansible/group_vars/all.yml`
-
-```yaml
-domain_root: "local.test"
-ushahidi_image: "ushahidi/platform:latest"
-
-# WireGuard
-wg_network_cidr: "10.20.0.0/24"
-wg_iface: "wg0"
-wg_keepalive: 25
-
-# MySQL
-mysql_root_password: "rootpass"
-mysql_gr_user: "gruser"
-mysql_gr_password: "grpass"
-mysql_app_user: "ushahidi"
-mysql_app_password: "apppass"
-mysql_db: "ushahidi"
-gr_group_name: "c6b2f7a1-43e9-4b77-9d6d-ccaaab09c6f0"
-gr_seeds: |
-  {{ hostvars['do-a'].wg_ip }}:33061,{{ hostvars['do-b'].wg_ip }}:33061,{{ hostvars['hz-a'].wg_ip }}:33061
-
-# MinIO
-minio_access_key: "minioadmin"
-minio_secret_key: "minioadminchange"
-minio_cluster_nodes:
-  - "http://{{ hostvars['do-a'].wg_ip }}:9000"
-  - "http://{{ hostvars['do-b'].wg_ip }}:9000"
-  - "http://{{ hostvars['hz-a'].wg_ip }}:9000"
-  - "http://{{ hostvars['hz-b'].wg_ip }}:9000"
-
-# Traefik routing
-traefik_routes:
-  - host: "ushahidi.local.test"
-    service: "ushahidi"
-    port: 8080
-    middlewares: [ "secureHeaders" ]
-```
-
----
-
-## 🧩 Step 5 — Run the Playbook
+## 🧩 Step 4 — Run the Playbook
 
 Install dependencies and deploy:
 
 ```bash
-ansible-galaxy collection install community.docker
-ansible-playbook -i ansible/inventories/local/hosts.ini ansible/site.yml
+ansible-galaxy collection install -r ansible/collections/requirements.yml
+ansible-playbook ansible/site.yml
 ```
 
 Ansible will:
@@ -164,7 +138,7 @@ Ansible will:
 
 ---
 
-## ✅ Step 6 — Verify Deployment
+## ✅ Step 5 — Verify Deployment
 
 ### WireGuard mesh
 
@@ -195,7 +169,7 @@ Sign up, create a test post, upload a file, confirm it appears in MinIO.
 
 ---
 
-## 🧪 Step 7 — Functional Tests
+## 🧪 Step 6 — Functional Tests
 
 | Test               | Command                    | Expected                 |
 | ------------------ | -------------------------- | ------------------------ |

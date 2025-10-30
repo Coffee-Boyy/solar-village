@@ -1,6 +1,5 @@
 ansible_user: deployer
-
-domain_root: "example.org"
+domain_root: "local.test"
 hostnames:
   api: "api.{{ domain_root }}"
   maps: "maps.{{ domain_root }}"
@@ -10,6 +9,8 @@ hostnames:
 wg_network_cidr: "10.20.0.0/24"
 wg_iface: "wg0"
 wg_keepalive: 25
+wg_port: 51820
+wg_ip_offset: 2
 
 # MySQL
 mysql_root_password: "change-me-strong"

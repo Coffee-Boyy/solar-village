@@ -1,0 +1,53 @@
+- name: Enable IPv4 forwarding
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    state: present
+    reload: yes
+
+- name: Build wg_peers list from the other hosts
+  set_fact:
+    wg_peers: []
+- name: Append each peer to wg_peers
+  set_fact:
+    wg_peers: "{{ wg_peers + [ peer_dict ] }}"
+  vars:
+    peer_dict: >-
+      {{
+        {
+          'name': item,
+          'public_key': hostvars[item].wg_public_key,
+          'allowed_ips': [ hostvars[item].wg_ip ],
+          'persistent_keepalive': wg_keepalive
+        }
+        | combine(
+            (hostvars[item].wg_endpoint is defined and hostvars[item].wg_endpoint|length > 0)
+            | ternary({'endpoint': hostvars[item].wg_endpoint}, {}),
+            recursive=True
+          )
+      }}
+  loop: "{{ groups['wg_all'] | difference([inventory_hostname]) }}"
+
+- name: Render wg0.conf
+  template:
+    src: wg0.conf.j2
+    dest: /etc/wireguard/{{ wg_iface }}.conf
+    mode: "0600"
+
+- name: Allow UDP {{ wg_port }} via UFW
+  command: "ufw allow {{ wg_port }}/udp"
+  changed_when: "'Rule added' in ufw_open.stdout or 'Skipping' in ufw_open.stdout"
+  register: ufw_open
+  failed_when: false
+
+- name: Allow intra-WG network via UFW
+  command: "ufw allow from {{ (wg_ip.split('/')[0].rsplit('.',1)[0]) }}.0/24"
+  register: ufw_net
+  changed_when: false
+  failed_when: false
+
+- name: Ensure wg-quick@{{ wg_iface }} is enabled and started
+  systemd:
+    name: "wg-quick@{{ wg_iface }}"
+    enabled: true
+    state: started

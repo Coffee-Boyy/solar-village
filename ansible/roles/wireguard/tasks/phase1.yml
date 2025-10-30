@@ -1,0 +1,62 @@
+- name: Ensure APT cache is fresh (Ubuntu)
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install WireGuard + persistence helpers
+  apt:
+    name:
+      - wireguard
+      - iptables-persistent
+    state: present
+
+- name: Ensure /etc/wireguard exists and is private
+  file:
+    path: /etc/wireguard
+    state: directory
+    mode: "0700"
+
+- name: Generate private key if absent
+  shell: "umask 077; wg genkey | tee /etc/wireguard/private.key"
+  args:
+    creates: /etc/wireguard/private.key
+
+- name: Generate public key if absent
+  shell: "wg pubkey < /etc/wireguard/private.key | tee /etc/wireguard/public.key"
+  args:
+    creates: /etc/wireguard/public.key
+
+- name: Read private key (remote)
+  slurp:
+    src: /etc/wireguard/private.key
+  register: wg_priv_slurp
+  no_log: true
+
+- name: Read public key (remote)
+  slurp:
+    src: /etc/wireguard/public.key
+  register: wg_pub_slurp
+
+# Compute wg_ip from wg_network_cidr without extra collections:
+# 1) pull "10.20.0.0" from "10.20.0.0/24"
+# 2) drop last octet → "10.20.0"
+# 3) append index (1-based) → "10.20.0.<idx>"
+- name: Compute deterministic WG IPv4 /32
+  set_fact:
+    wg_ip: >-
+      {{
+        (wg_network_cidr
+          | regex_replace('/.*','')
+          | regex_replace('\.\d+$','')
+        )
+        ~ '.'
+        ~ ((groups['wg_all'] | sort).index(inventory_hostname) + wg_ip_offset)
+        ~ '/32'
+      }}
+
+- name: Publish WireGuard facts for this host
+  set_fact:
+    wg_private_key: "{{ wg_priv_slurp.content | b64decode | trim }}"
+    wg_public_key:  "{{ wg_pub_slurp.content  | b64decode | trim }}"
+    wg_endpoint:    "{{ hostvars[inventory_hostname].wg_endpoint | default(omit) }}"
+  no_log: true

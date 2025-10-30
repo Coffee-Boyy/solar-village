@@ -1,9 +1,41 @@
-- name: Ensure docker is present
-  apt:
-    name: [ "docker.io", "docker-compose-plugin" ]
+- name: Install required system packages
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
     state: present
-- name: Add deployer to docker group
-  user:
+    update_cache: yes
+
+- name: Add Docker GPG apt key
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker apt repository
+  ansible.builtin.apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu focal stable
+    state: present
+
+- name: Install Docker Engine
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+
+- name: Ensure Docker started and enabled
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: "Add {{ ansible_user }} to docker group"
+  ansible.builtin.user:
     name: "{{ ansible_user }}"
     groups: docker
-    append: yes
+    append: true
