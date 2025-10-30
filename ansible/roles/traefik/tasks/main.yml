@@ -1,26 +1,47 @@
-- name: Create dynamic config
-  copy:
+- name: Ensure /etc/traefik exists
+  ansible.builtin.file:
+    path: /etc/traefik
+    state: directory
+    mode: "0755"
+
+- name: Ensure /etc/traefik/dynamic exists
+  ansible.builtin.file:
+    path: /etc/traefik/dynamic
+    state: directory
+    mode: "0755"
+
+- name: Install traefik static config
+  ansible.builtin.template:
+    src: traefik.yml.j2
+    dest: /etc/traefik/traefik.yml
+    mode: "0644"
+  notify: restart traefik
+
+- name: Install traefik dynamic config
+  ansible.builtin.template:
+    src: dynamic.yml.j2
     dest: /etc/traefik/dynamic/app.yml
-    content: |
-      http:
-        routers:
-        {% for r in traefik_routes %}
-          {{ r.service }}:
-            rule: Host(`{{ r.host }}`)
-            entryPoints: [ "websecure" ]
-            service: {{ r.service }}
-            tls:
-              certResolver: dns01
-            middlewares: {{ r.middlewares | default([]) }}
-        {% endfor %}
-        services:
-        {% for r in traefik_routes %}
-          {{ r.service }}:
-            loadBalancer:
-              servers:
-                - url: "http://127.0.0.1:{{ r.port }}"
-        {% endfor %}
-- name: Restart traefik (container service managed by systemd unit)
-  systemd:
+    mode: "0644"
+  notify: restart traefik
+
+- name: Ensure acme.json exists with correct perms
+  ansible.builtin.copy:
+    dest: /etc/traefik/acme.json
+    content: ""
+    force: no
+    mode: "0600"
+  notify: restart traefik
+
+- name: Install traefik systemd unit
+  ansible.builtin.template:
+    src: traefik.service.j2
+    dest: /etc/systemd/system/traefik.service
+    mode: "0644"
+  notify: restart traefik
+  when: traefik_manage_unit | default(true)
+
+- name: Enable and start Traefik
+  ansible.builtin.systemd:
     name: traefik
-    state: restarted
+    enabled: true
+    state: started

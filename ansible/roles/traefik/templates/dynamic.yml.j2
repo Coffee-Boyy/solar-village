@@ -1,0 +1,18 @@
+http:
+  routers:
+{% for r in traefik_routes %}
+    {{ r.service }}:
+      rule: "Host(`{{ r.host }}`)"
+      entryPoints: [ "websecure" ]
+      service: {{ r.service }}
+      tls:
+        certResolver: dns01
+      middlewares: {{ r.middlewares | default([]) }}
+{% endfor %}
+  services:
+{% for r in traefik_routes %}
+    {{ r.service }}:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:{{ r.port }}"
+{% endfor %}

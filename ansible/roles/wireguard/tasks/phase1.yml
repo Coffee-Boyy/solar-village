@@ -51,7 +51,6 @@
         )
         ~ '.'
         ~ ((groups['wg_all'] | sort).index(inventory_hostname) + wg_ip_offset)
-        ~ '/32'
       }}
 
 - name: Publish WireGuard facts for this host

@@ -6,7 +6,7 @@
 - name: Start router container (no local mysqld)
   community.docker.docker_container:
     name: mysql-router
-    image: mysql/mysql-router:8.4
+    image: mysql/mysql-router:8.0
     restart_policy: always
     command: "mysqlrouter --config /etc/mysqlrouter/router.conf"
     volumes:

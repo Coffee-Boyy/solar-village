@@ -1,9 +1,13 @@
 ansible_user: deployer
-domain_root: "local.test"
+domain_root: "coffeeboy.cafe"
 hostnames:
-  api: "api.{{ domain_root }}"
-  maps: "maps.{{ domain_root }}"
-  ushahidi: "ushahidi.{{ domain_root }}"
+  api: "sv-api.{{ domain_root }}"
+  maps: "sv-maps.{{ domain_root }}"
+  ushahidi: "sv-ushahidi.{{ domain_root }}"
+
+dns_email: "connorkchris@icloud.com"
+dns_provider: "cloudflare"
+dns_api_token: "cloudflare_api_token"
 
 # WireGuard
 wg_network_cidr: "10.20.0.0/24"
@@ -11,6 +15,7 @@ wg_iface: "wg0"
 wg_keepalive: 25
 wg_port: 51820
 wg_ip_offset: 2
+wg_endpoint: "{{ ansible_host }}:{{ wg_port }}"
 
 # MySQL
 mysql_root_password: "change-me-strong"
@@ -22,7 +27,7 @@ mysql_db: "ushahidi"
 
 # MySQL Group Replication group
 gr_group_name: "D35FFB92-58F5-499A-B1F6-40CCC244A0BD"  # uuidgen
-gr_seeds: |
+gr_seeds:
   - "{{ hostvars['do-a'].wg_ip }}:33061"
   - "{{ hostvars['do-b'].wg_ip }}:33061"
   - "{{ hostvars['hz-a'].wg_ip }}:33061"
@@ -37,7 +42,7 @@ minio_cluster_nodes:
   - "http://{{ hostvars['hz-b'].wg_ip }}:9000"
 
 # Ushahidi
-ushahidi_image: "ushahidi/platform:latest"     # adjust for your fork/tag
+ushahidi_image: "ushahidi/platform:latest"
 ushahidi_site_url: "https://{{ hostnames.ushahidi }}"
 
 # Traefik hostnames → services map

@@ -1,9 +1,9 @@
-version: "3.9"
 services:
   mysql:
     image: mysql:8.4
     container_name: mysql
     restart: always
+    network_mode: host
     environment:
       MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
       MYSQL_DATABASE: "{{ mysql_db }}"
@@ -13,27 +13,18 @@ services:
       mysqld
       --server-id={{ inventory_hostname | regex_replace('[^0-9a-zA-Z]','') | hash('md5') | int(base=16) % 100000 }}
       --log-bin=binlog
-      --binlog-format=ROW
       --gtid-mode=ON
       --enforce-gtid-consistency=ON
-      --plugin-load-add='group_replication.so'
-      --group-replication-start-on-boot=OFF
-      --group-replication-local-address='{{ wg_ip }}:33061'
-      --group-replication-group-seeds='{{ gr_seeds | join(",") }}'
-      --group-replication-group-name='{{ gr_group_name }}'
-      --group-replication-single-primary-mode=OFF
-      --group-replication-enforce-update-everywhere-checks=ON
       --bind-address={{ wg_ip }}
-    ports:
-      - "3306:3306"
-      - "33061:33061"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_volume:/var/lib/mysql
+      - ./mysql.conf:/etc/mysql/conf.d/mysql.cnf:ro
 
   router:
-    image: mysql/mysql-router:8.4
+    image: mysql/mysql-router:8.0
     container_name: mysql-router
     restart: always
+    network_mode: host
     depends_on: [ mysql ]
     command: >
       mysqlrouter --config /etc/mysqlrouter/router.conf
@@ -41,4 +32,4 @@ services:
       - ./router.conf:/etc/mysqlrouter/router.conf:ro
 
 volumes:
-  mysql_data:
+  mysql_volume:

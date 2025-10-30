@@ -1,0 +1,9 @@
+[mysqld]
+plugin-load-add=group_replication.so
+
+loose-group_replication_start_on_boot=OFF
+loose-group_replication_local_address={{ wg_ip }}:33061
+loose-group_replication_group_seeds={{ gr_seeds | join(",") }}
+loose-group_replication_group_name={{ gr_group_name }}
+loose-group_replication_single_primary_mode=OFF
+loose-group_replication_enforce_update_everywhere_checks=ON

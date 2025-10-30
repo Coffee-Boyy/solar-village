@@ -9,7 +9,11 @@ PrivateKey  = {{ wg_private_key }}
 [Peer]
 PublicKey   = {{ p.public_key }}
 AllowedIPs  = {{ (p.allowed_ips | list) | join(", ") }}
-{% if p.endpoint is defined %}Endpoint    = {{ p.endpoint }}{% endif %}
-{% if p.persistent_keepalive is defined %}PersistentKeepalive = {{ p.persistent_keepalive }}{% endif %}
+{% if p.endpoint is defined %}
+Endpoint    = {{ p.endpoint }}
+{% endif %}
+{% if p.persistent_keepalive is defined %}
+PersistentKeepalive = {{ p.persistent_keepalive }}
+{% endif %}
 
 {% endfor %}
