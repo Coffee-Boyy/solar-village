@@ -1,0 +1,16 @@
+- name: Ensure basic packages & updates
+  apt:
+    update_cache: yes
+    name: [ "ufw", "fail2ban", "jq" ]
+    state: present
+
+- name: UFW allow 80/443 and MySQL GR port (internal only by default)
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+  loop: [ "80", "443" ]  # expose public; 3306/33061 should be private/VPN in production
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+    policy: deny

@@ -1,0 +1,9 @@
+- name: Ensure docker is present
+  apt:
+    name: [ "docker.io", "docker-compose-plugin" ]
+    state: present
+- name: Add deployer to docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes

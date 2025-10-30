@@ -1,0 +1,78 @@
+#cloud-config
+package_update: true
+packages: [ wireguard, docker.io, docker-compose-plugin, jq, ufw, fail2ban ]
+users:
+  - name: deployer
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    groups: [sudo, docker]
+    shell: /bin/bash
+    ssh_import_id:
+    lock_passwd: true
+
+write_files:
+  - path: /etc/traefik/traefik.yml
+    permissions: "0644"
+    content: |
+      entryPoints:
+        web:
+          address: ":80"
+        websecure:
+          address: ":443"
+      certificatesResolvers:
+        dns01:
+          acme:
+            email: ${dns_email}
+            storage: /etc/traefik/acme.json
+            dnsChallenge:
+              provider: ${dns_provider}
+      api:
+        dashboard: true
+      providers:
+        file:
+          directory: /etc/traefik/dynamic
+          watch: true
+  - path: /etc/traefik/dynamic/dynamic.yml
+    permissions: "0644"
+    content: |
+      http:
+        middlewares:
+          secureHeaders:
+            headers:
+              stsSeconds: 63072000
+              stsIncludeSubdomains: true
+              forceSTSHeader: true
+              contentTypeNosniff: true
+              frameDeny: true
+        routers: {}
+        services: {}
+
+  - path: /etc/systemd/system/traefik.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Traefik
+      After=network-online.target
+      [Service]
+      ExecStart=/usr/bin/docker run --rm --name traefik \
+        -p 80:80 -p 443:443 -p 8080:8080 \
+        -v /etc/traefik:/etc/traefik \
+        -e CF_DNS_API_TOKEN=${dns_api_token} \
+        traefik:v3.0 \
+        --providers.file.directory=/etc/traefik/dynamic \
+        --providers.file.watch=true \
+        --entrypoints.web.address=:80 \
+        --entrypoints.websecure.address=:443 \
+        --certificatesresolvers.dns01.acme.email=${dns_email} \
+        --certificatesresolvers.dns01.acme.storage=/etc/traefik/acme.json \
+        --certificatesresolvers.dns01.acme.dnschallenge.provider=${dns_provider} \
+        --api.dashboard=true
+      Restart=always
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  - modprobe wireguard || true
+  - systemctl enable --now docker
+  - mkdir -p /etc/traefik/dynamic
+  - touch /etc/traefik/acme.json && chmod 600 /etc/traefik/acme.json
+  - systemctl enable --now traefik

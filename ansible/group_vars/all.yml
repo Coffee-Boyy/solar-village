@@ -1,0 +1,47 @@
+ansible_user: deployer
+
+domain_root: "example.org"
+hostnames:
+  api: "api.{{ domain_root }}"
+  maps: "maps.{{ domain_root }}"
+  ushahidi: "ushahidi.{{ domain_root }}"
+
+# WireGuard
+wg_network_cidr: "10.20.0.0/24"
+wg_iface: "wg0"
+wg_keepalive: 25
+
+# MySQL
+mysql_root_password: "change-me-strong"
+mysql_gr_user: "gruser"
+mysql_gr_password: "change-me-strong"
+mysql_app_user: "ushahidi"
+mysql_app_password: "change-me-strong"
+mysql_db: "ushahidi"
+
+# MySQL Group Replication group
+gr_group_name: "D35FFB92-58F5-499A-B1F6-40CCC244A0BD"  # uuidgen
+gr_seeds: |
+  - "{{ hostvars['do-a'].wg_ip }}:33061"
+  - "{{ hostvars['do-b'].wg_ip }}:33061"
+  - "{{ hostvars['hz-a'].wg_ip }}:33061"
+
+# MinIO
+minio_access_key: "minioadmin"
+minio_secret_key: "minioadminchange"
+minio_cluster_nodes:
+  - "http://{{ hostvars['do-a'].wg_ip }}:9000"
+  - "http://{{ hostvars['do-b'].wg_ip }}:9000"
+  - "http://{{ hostvars['hz-a'].wg_ip }}:9000"
+  - "http://{{ hostvars['hz-b'].wg_ip }}:9000"
+
+# Ushahidi
+ushahidi_image: "ushahidi/platform:latest"     # adjust for your fork/tag
+ushahidi_site_url: "https://{{ hostnames.ushahidi }}"
+
+# Traefik hostnames → services map
+traefik_routes:
+  - host: "{{ hostnames.ushahidi }}"
+    service: "ushahidi"
+    port: 8080
+    middlewares: [ "secureHeaders" ]

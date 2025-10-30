@@ -1,0 +1,47 @@
+- name: Create mysql app dir
+  file: { path: /opt/mysql, state: directory }
+
+- name: Drop docker-compose and router.conf
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/mysql/docker-compose.yml
+
+- name: Drop mysql router config
+  template:
+    src: router.conf.j2
+    dest: /opt/mysql/router.conf
+
+- name: Up MySQL & Router
+  community.docker.docker_compose_v2:
+    project_src: /opt/mysql
+    state: present
+
+# Bootstrap GR on first node only
+- name: Bootstrap GR (first primary only)
+  when: inventory_hostname == groups['mysql_gr'][0]
+  shell: |
+    docker exec mysql mysql -uroot -p'{{ mysql_root_password }}' -e "
+      INSTALL PLUGIN group_replication SONAME 'group_replication.so';
+      SET SQL_LOG_BIN=0;
+      CREATE USER IF NOT EXISTS '{{ mysql_gr_user }}'@'%' IDENTIFIED BY '{{ mysql_gr_password }}';
+      GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '{{ mysql_gr_user }}'@'%';
+      FLUSH PRIVILEGES;
+      SET SQL_LOG_BIN=1;
+      CHANGE REPLICATION SOURCE TO SOURCE_USER='{{ mysql_gr_user }}', SOURCE_PASSWORD='{{ mysql_gr_password }}' FOR CHANNEL 'group_replication_recovery';
+      START GROUP_REPLICATION;
+    "
+
+# Join other primaries
+- name: Join GR (other primaries)
+  when: inventory_hostname != groups['mysql_gr'][0] and "'mysql_gr' in group_names"
+  shell: |
+    docker exec mysql mysql -uroot -p'{{ mysql_root_password }}' -e "
+      INSTALL PLUGIN group_replication SONAME 'group_replication.so';
+      SET SQL_LOG_BIN=0;
+      CREATE USER IF NOT EXISTS '{{ mysql_gr_user }}'@'%' IDENTIFIED BY '{{ mysql_gr_password }}';
+      GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO '{{ mysql_gr_user }}'@'%';
+      FLUSH PRIVILEGES;
+      SET SQL_LOG_BIN=1;
+      CHANGE REPLICATION SOURCE TO SOURCE_USER='{{ mysql_gr_user }}', SOURCE_PASSWORD='{{ mysql_gr_password }}' FOR CHANNEL 'group_replication_recovery';
+      START GROUP_REPLICATION;
+    "

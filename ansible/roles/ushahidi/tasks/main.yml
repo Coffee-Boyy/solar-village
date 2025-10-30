@@ -1,0 +1,12 @@
+- name: Ensure ushahidi dir
+  file: { path: /opt/ushahidi, state: directory }
+
+- name: Drop compose
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/ushahidi/docker-compose.yml
+
+- name: Up Ushahidi
+  community.docker.docker_compose_v2:
+    project_src: /opt/ushahidi
+    state: present

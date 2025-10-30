@@ -1,0 +1,23 @@
+- hosts: all
+  roles:
+    - role: base_hardening
+    - role: docker_runtime
+    - role: wireguard
+    - role: traefik
+
+- hosts: mysql_gr
+  roles:
+    - role: mysql_gr
+
+- hosts: mysql_async
+  roles:
+    - role: mysql_router   # connects to GR seeds for reads
+    - role: mysql_gr       # optional: set as async replica via classic replication if desired
+
+- hosts: minio_all
+  roles:
+    - role: minio
+
+- hosts: ushahidi_all
+  roles:
+    - role: ushahidi

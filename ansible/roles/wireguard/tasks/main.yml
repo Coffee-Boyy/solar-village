@@ -1,0 +1,75 @@
+- name: Install WireGuard packages
+  apt:
+    name: [ "wireguard", "iptables-persistent" ]
+    state: present
+    update_cache: yes
+
+- name: Ensure /etc/wireguard exists
+  file:
+    path: /etc/wireguard
+    state: directory
+    mode: "0700"
+
+- name: Generate private key if absent (on host)
+  shell: "wg genkey | tee /etc/wireguard/private.key"
+  args: { creates: /etc/wireguard/private.key }
+  register: genkey_result
+  changed_when: genkey_result.rc == 0
+
+- name: Set permissions on private key
+  file:
+    path: /etc/wireguard/private.key
+    mode: "0600"
+
+- name: Generate public key from private key
+  shell: "wg pubkey < /etc/wireguard/private.key | tee /etc/wireguard/public.key"
+  args: { creates: /etc/wireguard/public.key }
+
+- name: Read local public key
+  slurp:
+    src: /etc/wireguard/public.key
+  register: local_pubkey
+
+- name: Expose local WireGuard facts
+  set_fact:
+    wg_public_key: "{{ local_pubkey.content | b64decode | trim }}"
+    wg_listen_port: "{{ wg_port }}"
+    wg_address: "{{ wg_ip }}"
+  cacheable: true
+
+# small barrier so all hosts have wg_public_key in hostvars
+- name: Wait for all nodes to register public keys
+  wait_for:
+    timeout: 10
+  run_once: true
+
+- name: Enable IP forwarding
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    state: present
+    reload: yes
+
+- name: Render wg0.conf
+  template:
+    src: wg0.conf.j2
+    dest: /etc/wireguard/{{ wg_iface }}.conf
+    mode: "0600"
+  notify: restart wireguard
+
+- name: Open firewall for WireGuard (UDP {{ wg_port }})
+  ufw:
+    rule: allow
+    port: "{{ wg_port }}"
+    proto: udp
+
+- name: Allow intra-WG network
+  ufw:
+    rule: allow
+    src: "{{ wg_network_cidr }}"
+
+- name: Ensure wg-quick@wg0 enabled/running
+  systemd:
+    name: "wg-quick@{{ wg_iface }}"
+    enabled: true
+    state: started
