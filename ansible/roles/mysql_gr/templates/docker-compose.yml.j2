@@ -1,35 +1,23 @@
 services:
   mysql:
-    image: mysql:8.4
+    image: percona/percona-xtradb-cluster:8.4
     container_name: mysql
-    restart: always
+    restart: unless-stopped
     network_mode: host
     environment:
-      MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
-      MYSQL_DATABASE: "{{ mysql_db }}"
-      MYSQL_USER: "{{ mysql_app_user }}"
-      MYSQL_PASSWORD: "{{ mysql_app_password }}"
-    command: >
-      mysqld
-      --server-id={{ inventory_hostname | regex_replace('[^0-9a-zA-Z]','') | hash('md5') | int(base=16) % 100000 }}
-      --log-bin=binlog
-      --gtid-mode=ON
-      --enforce-gtid-consistency=ON
-      --bind-address={{ wg_ip }}
+      - MYSQL_ROOT_PASSWORD={{ mysql_root_password }}
+      - XTRABACKUP_PASSWORD={{ xtrabackup_password }}
+      - CLUSTER_NAME={{ pxc_cluster_name }}
+{% if inventory_hostname != groups['mysql_gr'][0] %}
+      - CLUSTER_JOIN={{ pxc_seed_ip }}
+{% endif %}
     volumes:
-      - mysql_volume:/var/lib/mysql
-      - ./mysql.conf:/etc/mysql/conf.d/mysql.cnf:ro
-
-  router:
-    image: mysql/mysql-router:8.0
-    container_name: mysql-router
-    restart: always
-    network_mode: host
-    depends_on: [ mysql ]
-    command: >
-      mysqlrouter --config /etc/mysqlrouter/router.conf
-    volumes:
-      - ./router.conf:/etc/mysqlrouter/router.conf:ro
+      - percona_data:/var/lib/mysql
+      - ./mysql.conf:/etc/percona-xtradb-cluster.conf.d/mysql.cnf:ro
+      - ./certs:/opt/mysql/certs:ro
+{% if pxc_bootstrap_flag %}
+    command: ["--wsrep-new-cluster"]
+{% endif %}
 
 volumes:
-  mysql_volume:
+  percona_data:

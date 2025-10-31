@@ -18,11 +18,11 @@ wg_ip_offset: 2
 wg_endpoint: "{{ ansible_host }}:{{ wg_port }}"
 
 # MySQL
-mysql_root_password: "change-me-strong"
+mysql_root_password: "changemestrong"
 mysql_gr_user: "gruser"
-mysql_gr_password: "change-me-strong"
+mysql_gr_password: "changemestrong"
 mysql_app_user: "ushahidi"
-mysql_app_password: "change-me-strong"
+mysql_app_password: "changemestrong"
 mysql_db: "ushahidi"
 
 # MySQL Group Replication group
@@ -31,6 +31,21 @@ gr_seeds:
   - "{{ hostvars['do-a'].wg_ip }}:33061"
   - "{{ hostvars['do-b'].wg_ip }}:33061"
   - "{{ hostvars['hz-a'].wg_ip }}:33061"
+
+cluster_name: "pxc-cluster"
+xtrabackup_password: "STRONG_XB_PASS"
+
+# PKI defaults
+mysql_pki_dir_controller: "generated-certs/ca"   # stored on controller
+mysql_pki_days: 825                              # ~2.25 years
+mysql_pki_org: "Solar Village"
+mysql_pki_ou: "DB Cluster"
+mysql_pki_country: "US"
+mysql_pki_state: "CA"
+mysql_pki_locality: "Sunnyvale"
+
+# Optional client cert common name
+mysql_client_cn: "mysql-client"
 
 # MinIO
 minio_access_key: "minioadmin"

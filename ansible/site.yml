@@ -11,8 +11,7 @@
 
 - hosts: mysql_async
   roles:
-    - role: mysql_router   # connects to GR seeds for reads
-    - role: mysql_gr       # optional: set as async replica via classic replication if desired
+    - role: mysql_gr
 
 - hosts: minio_all
   roles:

@@ -2,3 +2,4 @@
 .venv/
 
 ansible/group_vars/connor.yml
+ansible/generated-certs/

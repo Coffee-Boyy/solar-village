@@ -1,9 +1,14 @@
 [mysqld]
-plugin-load-add=group_replication.so
+{% if inventory_hostname != groups['mysql_gr'][0] %}
+ssl-ca=/opt/mysql/certs/ca.pem
+ssl-cert=/opt/mysql/certs/server-cert.pem
+ssl-key=/opt/mysql/certs/server-key.pem
+{% endif %}
 
-loose-group_replication_start_on_boot=OFF
-loose-group_replication_local_address={{ wg_ip }}:33061
-loose-group_replication_group_seeds={{ gr_seeds | join(",") }}
-loose-group_replication_group_name={{ gr_group_name }}
-loose-group_replication_single_primary_mode=OFF
-loose-group_replication_enforce_update_everywhere_checks=ON
+wsrep_node_address = {{ wg_ip }}
+wsrep_sst_receive_address = {{ wg_ip }}:4444
+wsrep_provider_options = "gmcast.listen_addr=tcp://{{ wg_ip }}:4567; ist.recv_addr={{ wg_ip }}:4568"
+
+pxc_strict_mode = ENFORCING
+
+bind-address = 0.0.0.0
