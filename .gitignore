@@ -1,5 +1,5 @@
 .vscode/
 .venv/
 
-ansible/group_vars/connor.yml
-ansible/generated-certs/
+infra/ansible/group_vars/connor.yml
+infra/ansible/generated-certs/

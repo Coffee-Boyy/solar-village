@@ -45,9 +45,9 @@ ansible --version
 Create four Ubuntu 24.04 VMs (2 CPU / 4 GB RAM / 30 GB disk):
 
 ```bash
-multipass launch 24.04 --name node-a --cpus 2 --memory 4G --disk 30G
-multipass launch 24.04 --name node-b --cpus 2 --memory 4G --disk 30G
-multipass launch 24.04 --name node-c --cpus 2 --memory 4G --disk 30G
+multipass launch 24.04 --name node-a --cpus 4 --memory 4G --disk 30G
+multipass launch 24.04 --name node-b --cpus 4 --memory 4G --disk 30G
+multipass launch 24.04 --name node-c --cpus 4 --memory 4G --disk 30G
 
 multipass list
 ```
@@ -59,6 +59,7 @@ Note each VM’s IP address.
 ## 🔑 Step 2 — Authorize SSH Access
 
 Create a personal SSH key (if you don't already have one):
+
 ```bash
 ssh-keygen -t ed25519
 ```
@@ -75,7 +76,7 @@ done
 
 ## 🗺️ Step 3 — Create Ansible Inventory
 
-`ansible/inventories/local/hosts.ini`
+`infra/ansible/inventories/local/hosts.ini`
 
 ```ini
 [all]
@@ -113,8 +114,8 @@ Replace each `<IP_…>` with the actual Multipass IPs.
 Install dependencies and deploy:
 
 ```bash
-ansible-galaxy collection install -r ansible/collections/requirements.yml
-ansible-playbook ansible/site.yml
+ansible-galaxy collection install -r infra/ansible/collections/requirements.yml
+ansible-playbook infra/ansible/site.yml
 ```
 
 Ansible will:
@@ -134,7 +135,7 @@ Ansible will:
 ### WireGuard mesh
 
 ```bash
-ansible -i ansible/inventories/local/hosts.ini all -m command -a "sudo wg show"
+ansible -i infra/ansible/inventories/local/hosts.ini all -m command -a "sudo wg show"
 ```
 
 Each node should list 3 peers with `latest handshake` < 30 s.
@@ -188,7 +189,7 @@ Full API documentation for Ushahidi V5 is available here: https://documenter.get
 Stop containers and delete VMs:
 
 ```bash
-ansible -i ansible/inventories/local/hosts.ini all -m command -a "docker ps -q | xargs -r docker stop"
+ansible -i infra/ansible/inventories/local/hosts.ini all -m command -a "docker ps -q | xargs -r docker stop"
 multipass delete --purge node-a node-b node-c
 ```
 
