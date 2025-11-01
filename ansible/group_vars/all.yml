@@ -19,20 +19,11 @@ wg_endpoint: "{{ ansible_host }}:{{ wg_port }}"
 
 # MySQL
 mysql_root_password: "changemestrong"
-mysql_gr_user: "gruser"
-mysql_gr_password: "changemestrong"
 mysql_app_user: "ushahidi"
 mysql_app_password: "changemestrong"
 mysql_db: "ushahidi"
 
-# MySQL Group Replication group
-gr_group_name: "D35FFB92-58F5-499A-B1F6-40CCC244A0BD"  # uuidgen
-gr_seeds:
-  - "{{ hostvars['do-a'].wg_ip }}:33061"
-  - "{{ hostvars['do-b'].wg_ip }}:33061"
-  - "{{ hostvars['hz-a'].wg_ip }}:33061"
-
-cluster_name: "pxc-cluster"
+pxc_cluster_name: "pxc-8-4"
 xtrabackup_password: "STRONG_XB_PASS"
 
 # Garage
@@ -44,11 +35,6 @@ garage_replication_factor: 3
 garage_admin_token: "REPLACE_WITH_ADMIN_TOKEN"
 garage_metrics_token: "REPLACE_WITH_METRICS_TOKEN"
 garage_rpc_secret: "9bfd81f81694e2414da9650a8224a1ae02cbd070e3821da62d2628841324e306"
-garage_rpc_seeds:
-  - "{{ hostvars['do-a'].wg_ip }}:3901"
-  - "{{ hostvars['do-b'].wg_ip }}:3901"
-  - "{{ hostvars['hz-a'].wg_ip }}:3901"
-  - "{{ hostvars['hz-b'].wg_ip }}:3901"
 
 # Ushahidi
 ushahidi_image: "ghcr.io/ushahidi/platform:v2025.04.1"
@@ -58,5 +44,5 @@ ushahidi_site_url: "https://{{ hostnames.ushahidi }}"
 traefik_routes:
   - host: "{{ hostnames.ushahidi }}"
     service: "ushahidi"
-    port: 8080
+    port: 9080
     middlewares: [ "secureHeaders" ]

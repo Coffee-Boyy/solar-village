@@ -42,7 +42,6 @@
         dest: /opt/mysql/docker-compose.yml
       vars:
         pxc_bootstrap_flag: true
-        pxc_cluster_name: "pxc-8-4"
         pxc_seed_ip: "{{ hostvars[groups['mysql_gr'][0]].wg_ip }}"
 
     - name: "Render mysql (pxc) config"
@@ -107,7 +106,6 @@
         dest: /opt/mysql/docker-compose.yml
       vars:
         pxc_bootstrap_flag: false
-        pxc_cluster_name: "pxc-8-4"
         pxc_seed_ip: "{{ hostvars[groups['mysql_gr'][0]].wg_ip }}"
 
     - name: "Apply updated compose (remove bootstrap flag)"
@@ -209,7 +207,6 @@
         dest: /opt/mysql/docker-compose.yml
       vars:
         pxc_bootstrap_flag: false
-        pxc_cluster_name: "pxc-8-4"
         pxc_seed_ip: "{{ hostvars[groups['mysql_gr'][0]].wg_ip }}"
 
     - name: "Render mysql (pxc) config"
