@@ -1,4 +1,4 @@
-ansible_user: deployer
+ansible_user: ubuntu
 domain_root: "coffeeboy.cafe"
 hostnames:
   api: "sv-api.{{ domain_root }}"
@@ -47,14 +47,21 @@ mysql_pki_locality: "Sunnyvale"
 # Optional client cert common name
 mysql_client_cn: "mysql-client"
 
-# MinIO
-minio_access_key: "minioadmin"
-minio_secret_key: "minioadminchange"
-minio_cluster_nodes:
-  - "http://{{ hostvars['do-a'].wg_ip }}:9000"
-  - "http://{{ hostvars['do-b'].wg_ip }}:9000"
-  - "http://{{ hostvars['hz-a'].wg_ip }}:9000"
-  - "http://{{ hostvars['hz-b'].wg_ip }}:9000"
+# Garage
+garage_s3_endpoint: "http://127.0.0.1:3900"
+garage_s3_region: "garage"
+garage_access_key_id: "GKREPLACE_WITH_ACCESS_KEY"
+garage_secret_access_key: "REPLACE_WITH_SECRET_KEY"
+garage_bucket_name: "ushahidi-uploads"
+garage_replication_factor: 3
+garage_admin_token: "REPLACE_WITH_ADMIN_TOKEN"
+garage_metrics_token: "REPLACE_WITH_METRICS_TOKEN"
+garage_rpc_secret: "9bfd81f81694e2414da9650a8224a1ae02cbd070e3821da62d2628841324e306"
+garage_rpc_seeds:
+  - "{{ hostvars['do-a'].wg_ip }}:3901"
+  - "{{ hostvars['do-b'].wg_ip }}:3901"
+  - "{{ hostvars['hz-a'].wg_ip }}:3901"
+  - "{{ hostvars['hz-b'].wg_ip }}:3901"
 
 # Ushahidi
 ushahidi_image: "ushahidi/platform:latest"

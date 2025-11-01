@@ -6,7 +6,7 @@ This README walks you through setting up a **four-node local cluster** that mirr
 
 * **3× MySQL 8.4 Group Replication** (multi-primary)
 * **1× Async replica node**
-* **4× MinIO distributed object storage nodes**
+* **4× Garage distributed object storage nodes**
 * **4× Ushahidi containers + Traefik reverse proxies**
 * **WireGuard mesh** connecting all VMs over a private overlay network
 
@@ -100,7 +100,7 @@ hz-a
 [mysql_async]
 hz-b
 
-[minio_all]
+[garage_all]
 do-a
 do-b
 hz-a
@@ -133,7 +133,7 @@ Ansible will:
 3. Enable Docker and UFW rules.
 4. Deploy Traefik (reverse proxy + TLS).
 5. Bring up MySQL Group Replication + Router.
-6. Deploy MinIO (distributed).
+6. Deploy Garage (distributed S3-compatible storage).
 7. Launch Ushahidi containers on each node.
 
 ---
@@ -156,16 +156,23 @@ ssh ubuntu@<IP_DO_A> "docker exec mysql mysql -uroot -p'rootpass' -e \"SELECT ME
 
 Expect 3 members ONLINE.
 
-### MinIO console
+### Garage cluster
 
-Open `http://<IP_DO_A>:9001`
-Login: `minioadmin / minioadminchange`
-Create bucket `ushahidi-uploads`.
+Garage will be accessible at `http://<IP_DO_A>:3900` (S3 API) and `http://<IP_DO_A>:3903` (Admin API).
+
+After initial deployment, you'll need to:
+1. Initialize the cluster (on first node): `docker exec garage garage layout apply --version 1`
+2. Add nodes to the cluster layout
+3. Create the bucket: `docker exec garage garage bucket create ushahidi-uploads`
+4. Create access keys: `docker exec garage garage key new --name ushahidi-key`
+5. Configure bucket permissions
+
+For detailed Garage setup instructions, see: https://garagehq.deuxfleurs.fr/documentation/cookbook/real-world/
 
 ### Ushahidi UI
 
-Visit `http://<IP_DO_A>:8080` (or any node’s :8080).
-Sign up, create a test post, upload a file, confirm it appears in MinIO.
+Visit `http://<IP_DO_A>:8080` (or any node's :8080).
+Sign up, create a test post, upload a file, confirm it appears in Garage.
 
 ---
 
@@ -177,7 +184,7 @@ Sign up, create a test post, upload a file, confirm it appears in MinIO.
 | Add post on Node A | via Ushahidi UI            | Appears on Node B        |
 | Check GR quorum    | SQL query above            | All ONLINE               |
 | Restart Node B     | `multipass restart do-b`   | GR rejoins automatically |
-| Upload file        | Ushahidi UI → MinIO bucket | File visible             |
+| Upload file        | Ushahidi UI → Garage bucket | File visible             |
 
 ---
 
@@ -199,7 +206,7 @@ multipass delete --purge do-a do-b hz-a hz-b
 | VM nodes        | Multipass VMs       | DigitalOcean Droplets / Hetzner Servers |
 | Private network | WireGuard mesh      | Inter-cloud overlay                     |
 | DB cluster      | MySQL GR containers | Same (multi-region GR)                  |
-| Object store    | MinIO containers    | MinIO pods or S3-compatible buckets     |
+| Object store    | Garage containers    | Garage pods or S3-compatible buckets     |
 | Reverse proxy   | Traefik containers  | Per-node Traefik + ACME DNS-01          |
 | Deployment      | Ansible playbook    | GitHub Actions / Terraform + Ansible    |
 
@@ -211,7 +218,7 @@ multipass delete --purge do-a do-b hz-a hz-b
 | ---------------------------- | ----------------------------- | -------------------------------------------------------- |
 | `wg show` shows no handshake | UDP port blocked              | `sudo ufw allow 5182x/udp` on each VM                    |
 | `GROUP_REPLICATION` OFFLINE  | Seed IP typo or network delay | Re-run playbook or start GR manually                     |
-| MinIO “offline disks”        | Container restart timing      | `docker compose restart minio`                           |
+| Garage not accessible        | Container restart timing      | `docker compose restart garage`                           |
 | Ushahidi 500 error           | DB not ready yet              | Wait 30 s and refresh                                    |
 | DNS name not resolving       | Local host mapping needed     | `sudo nano /etc/hosts` → `<IP_DO_A> ushahidi.local.test` |
 
@@ -222,10 +229,10 @@ multipass delete --purge do-a do-b hz-a hz-b
 * Add **CI/CD**: run Terraform → Ansible on cloud nodes.
 * Integrate **GitHub Actions** for idempotent deploys.
 * Extend **WireGuard** to additional community nodes.
-* Add **Prometheus + Grafana** dashboards for GR / MinIO health.
+* Add **Prometheus + Grafana** dashboards for GR / Garage health.
 * Run **chaos tests**: kill nodes, verify auto-recovery.
 
 ---
 
 **Congratulations! 🎉**
-You now have a fully working, decentralized Ushahidi + MySQL Group Replication + MinIO stack running on your laptop — complete with private WireGuard networking and per-node Ushahidi instances.
+You now have a fully working, decentralized Ushahidi + MySQL Group Replication + Garage stack running on your laptop — complete with private WireGuard networking and per-node Ushahidi instances.

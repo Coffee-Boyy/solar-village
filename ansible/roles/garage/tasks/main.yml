@@ -1,0 +1,24 @@
+- name: Create Garage directories
+  file: { path: /opt/garage, state: directory }
+
+- name: Drop Garage compose
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/garage/docker-compose.yml
+
+- name: Drop Garage config
+  template:
+    src: garage.toml.j2
+    dest: /opt/garage/garage.toml
+
+- name: Up Garage container
+  community.docker.docker_compose_v2:
+    project_src: /opt/garage
+    state: present
+
+- name: Wait for Garage to be ready
+  wait_for:
+    host: "{{ wg_ip }}"
+    port: 3903
+    delay: 5
+    timeout: 30

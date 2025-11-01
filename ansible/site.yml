@@ -9,13 +9,9 @@
   roles:
     - role: mysql_gr
 
-- hosts: mysql_async
+- hosts: garage_all
   roles:
-    - role: mysql_gr
-
-- hosts: minio_all
-  roles:
-    - role: minio
+    - role: garage
 
 - hosts: ushahidi_all
   roles:
