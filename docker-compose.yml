@@ -29,7 +29,7 @@ services:
     depends_on:
       - mysql
     environment:
-      - DEBUG=1
+      - DEBUG=True
       - DATABASE_HOST=mysql
       - DATABASE_PORT=3306
       - DATABASE_NAME=django_db
