@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: solar-village-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: mysqldevelopment
+      MYSQL_DATABASE: ushahidi
+      MYSQL_USER: mysqldevelopment
+      MYSQL_PASSWORD: mysqldevelopment
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: solar-village-redis
+
+  django:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: solar-village-django
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      - DEBUG=1
+      - DATABASE_HOST=mysql
+      - DATABASE_PORT=3306
+      - DATABASE_NAME=django_db
+      - DATABASE_USER=mysqldevelopment
+      - DATABASE_PASSWORD=mysqldevelopment
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  ushahidi:
+    image: ghcr.io/ushahidi/platform:v2025.04.1
+    container_name: solar-village-ushahidi
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      APP_KEY: "SomeRandomKey!!!SomeRandomKey!!!"
+      BASE_URL: "http://localhost:9080"
+      ENABLE_NGINX: "true"
+      ENABLE_PLATFORM_TASKS: "false"
+      RUN_PLATFORM_MIGRATIONS: "true"
+      REDIS_HOST: redis
+      CACHE_DRIVER: redis
+      QUEUE_DRIVER: redis
+      DB_CONNECTION: "mysql"
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: "ushahidi"
+      DB_USERNAME: "mysqldevelopment"
+      DB_PASSWORD: "mysqldevelopment"
+      # S3 settings optional for local dev - can be added later if needed
+      S3_USE_PATH_STYLE_ENDPOINT: "true"
+    ports:
+      - "9080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  mysql_data:

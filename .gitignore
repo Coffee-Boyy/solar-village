@@ -1,5 +1,8 @@
+.DS_Store
 .vscode/
 .venv/
 
 infra/ansible/group_vars/connor.yml
 infra/ansible/generated-certs/
+
+__pycache__/
