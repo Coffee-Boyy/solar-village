@@ -35,20 +35,7 @@ gr_seeds:
 cluster_name: "pxc-cluster"
 xtrabackup_password: "STRONG_XB_PASS"
 
-# PKI defaults
-mysql_pki_dir_controller: "generated-certs/ca"   # stored on controller
-mysql_pki_days: 825                              # ~2.25 years
-mysql_pki_org: "Solar Village"
-mysql_pki_ou: "DB Cluster"
-mysql_pki_country: "US"
-mysql_pki_state: "CA"
-mysql_pki_locality: "Sunnyvale"
-
-# Optional client cert common name
-mysql_client_cn: "mysql-client"
-
 # Garage
-garage_s3_endpoint: "http://127.0.0.1:3900"
 garage_s3_region: "garage"
 garage_access_key_id: "GKREPLACE_WITH_ACCESS_KEY"
 garage_secret_access_key: "REPLACE_WITH_SECRET_KEY"

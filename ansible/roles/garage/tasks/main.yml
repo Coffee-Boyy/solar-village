@@ -22,3 +22,42 @@
     port: 3903
     delay: 5
     timeout: 30
+
+- name: Set garage node 0 hostname
+  set_fact:
+    garage_node0_host: "{{ groups['garage_all'][0] }}"
+
+- name: Get node 0 node ID
+  shell: docker exec garage /garage node id -q
+  register: garage_node0_id
+  when: inventory_hostname == garage_node0_host
+  changed_when: false
+
+- name: Set node 0 ID fact for all hosts
+  set_fact:
+    garage_node0_id_full: "{{ hostvars[garage_node0_host]['garage_node0_id']['stdout'] }}"
+  when: hostvars[garage_node0_host]['garage_node0_id'] is defined
+
+- name: Connect non-node-0 nodes to node 0
+  shell: docker exec garage /garage node connect "{{ garage_node0_id_full }}"
+  when: inventory_hostname != garage_node0_host and garage_node0_id_full is defined
+
+- name: Get current node ID
+  shell: docker exec garage /garage node id -q
+  register: garage_current_node_id
+  changed_when: false
+
+- name: Configure node with storage capacity and zone
+  shell: |
+    docker exec garage /garage layout assign \
+      -c {{ garage_storage_capacity }} \
+      -z {{ garage_zone }} \
+      {{ garage_current_node_id.stdout.split('@')[0] }}
+  run_once: false
+  changed_when: true
+
+- name: Apply layout configuration
+  shell: docker exec garage /garage layout apply --version 1
+  when: inventory_hostname == garage_node0_host
+  changed_when: true
+  ignore_errors: true
