@@ -13,8 +13,6 @@ variable "region_map" {
     name     = string    # node name
     private_ip = string  # WireGuard/private later; reserve for future
   }))
-  # Example (set via tfvars):
-  # do-a, do-b, hz-a, hz-b
 }
 
 variable "image"     {
