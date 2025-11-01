@@ -1,6 +1,6 @@
 services:
   garage:
-    image: dxflrs/garage:v1.0.0
+    image: {{ garage_image }}
     container_name: garage
     restart: always
     network_mode: host

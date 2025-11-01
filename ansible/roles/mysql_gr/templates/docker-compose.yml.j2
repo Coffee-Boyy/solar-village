@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: percona/percona-xtradb-cluster:8.4
+    image: {{ pxc_image }}
     container_name: mysql
     restart: unless-stopped
     network_mode: host

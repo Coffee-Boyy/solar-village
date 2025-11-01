@@ -23,10 +23,12 @@ mysql_app_user: "ushahidi"
 mysql_app_password: "changemestrong"
 mysql_db: "ushahidi"
 
+pxc_image: "percona/percona-xtradb-cluster:8.4"
 pxc_cluster_name: "pxc-8-4"
 xtrabackup_password: "STRONG_XB_PASS"
 
 # Garage
+garage_image: "dxflrs/garage:v1.0.0"
 garage_s3_region: "garage"
 garage_access_key_id: "GKREPLACE_WITH_ACCESS_KEY"
 garage_secret_access_key: "REPLACE_WITH_SECRET_KEY"
@@ -41,6 +43,7 @@ ushahidi_image: "ghcr.io/ushahidi/platform:v2025.04.1"
 ushahidi_site_url: "https://{{ hostnames.ushahidi }}"
 
 # Traefik hostnames → services map
+traefik_image: "traefik:v3.0"
 traefik_routes:
   - host: "{{ hostnames.ushahidi }}"
     service: "ushahidi"
