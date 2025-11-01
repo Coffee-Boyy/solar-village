@@ -59,7 +59,6 @@
       shell: docker exec mysql sh -c "mysqladmin ping -uroot -p'{{ mysql_root_password }}'"
       register: mysql_ready_boot
       retries: 60
-      delay: 2
       until: mysql_ready_boot.rc == 0
       changed_when: false
 
@@ -67,7 +66,6 @@
       shell: docker exec mysql sh -c "mysql -uroot -p'{{ mysql_root_password }}' -NBe \"SHOW STATUS LIKE 'wsrep_cluster_status'\" 2>/dev/null | grep -i Primary || echo 'NotReady'"
       register: cluster_status
       retries: 30
-      delay: 2
       until: "'Primary' in cluster_status.stdout"
       changed_when: false
 
@@ -75,7 +73,6 @@
       shell: docker exec mysql sh -c "test -f /var/lib/mysql/ca.pem && test -f /var/lib/mysql/server-cert.pem && test -f /var/lib/mysql/server-key.pem && echo 'ready' || echo 'waiting'"
       register: cert_check
       retries: 30
-      delay: 2
       until: "'ready' in cert_check.stdout"
       changed_when: false
 
@@ -163,7 +160,6 @@
       wait_for:
         host: "{{ hostvars[groups['mysql_gr'][0]].wg_ip }}"
         port: 3306
-        delay: 5
         timeout: 300
       run_once: true
 
@@ -224,7 +220,6 @@
       shell: docker exec mysql sh -c "mysqladmin ping -uroot -p'{{ mysql_root_password }}'"
       register: mysql_ready_follower
       retries: 60
-      delay: 2
       until: mysql_ready_follower.rc == 0
       changed_when: false
 
@@ -232,7 +227,6 @@
       shell: docker exec mysql sh -c "mysql -uroot -p'{{ mysql_root_password }}' -NBe \"SHOW STATUS LIKE 'wsrep_local_state_comment'\" 2>/dev/null | tail -1"
       register: local_state
       retries: 30
-      delay: 2
       until: "'Synced' in local_state.stdout"
       changed_when: false
 
@@ -241,7 +235,6 @@
   shell: docker exec mysql sh -c "mysqladmin ping -uroot -p'{{ mysql_root_password }}'"
   register: mysql_ready
   retries: 30
-  delay: 2
   until: mysql_ready.rc == 0
   changed_when: false
 

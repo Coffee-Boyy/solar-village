@@ -20,8 +20,7 @@
   wait_for:
     host: "{{ wg_ip }}"
     port: 3903
-    delay: 5
-    timeout: 30
+    timeout: 300
 
 - name: Set garage node 0 hostname
   set_fact:

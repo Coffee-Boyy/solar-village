@@ -22,6 +22,18 @@
   run_once: true
   changed_when: false
 
+- name: Check if Garage bucket exists
+  shell: docker exec garage /garage bucket info {{ garage_bucket_name }}
+  register: garage_bucket_check
+  run_once: true
+  changed_when: false
+  failed_when: false
+
+- name: Create Garage S3 bucket
+  shell: docker exec garage /garage bucket create {{ garage_bucket_name }}
+  run_once: true
+  when: garage_bucket_check.rc != 0
+
 - name: Render Ushahidi compose file
   template:
     src: docker-compose.yml.j2
