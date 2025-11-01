@@ -51,7 +51,7 @@ garage_rpc_seeds:
   - "{{ hostvars['hz-b'].wg_ip }}:3901"
 
 # Ushahidi
-ushahidi_image: "ushahidi/platform:latest"
+ushahidi_image: "ghcr.io/ushahidi/platform:v2025.04.1"
 ushahidi_site_url: "https://{{ hostnames.ushahidi }}"
 
 # Traefik hostnames → services map

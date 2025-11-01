@@ -1,12 +1,20 @@
 services:
+  redis:
+    image: redis:7.2-alpine
   ushahidi:
     image: {{ ushahidi_image }}
     container_name: ushahidi
     restart: always
-    network_mode: host
     environment:
+      APP_KEY: "SomeRandomKey!!!SomeRandomKey!!!"
       BASE_URL: "{{ ushahidi_site_url }}"
-      ENABLE_NGINX: "false"
+      ENABLE_NGINX: "true"
+      ENABLE_PLATFORM_TASKS: "false"
+      RUN_PLATFORM_MIGRATIONS: "{{ 'true' if inventory_hostname == groups['ushahidi_all'][0] else 'false' }}"
+
+      REDIS_HOST: redis
+      CACHE_DRIVER: redis
+      QUEUE_DRIVER: redis
 
       DB_CONNECTION: "mysql"
       DB_HOST: {{ wg_ip }}
@@ -21,3 +29,7 @@ services:
       S3_SECRET_KEY: "{{ garage_secret_access_key }}"
       S3_REGION: "{{ garage_s3_region }}"
       S3_USE_PATH_STYLE_ENDPOINT: "true"
+    ports:
+      - "9080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

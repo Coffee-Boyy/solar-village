@@ -1,12 +1,33 @@
 - name: Ensure ushahidi dir
   file: { path: /opt/ushahidi, state: directory }
 
-- name: Drop compose
+- name: Create MySQL database for Ushahidi
+  shell: |
+    docker exec mysql mysql -uroot -p'{{ mysql_root_password }}' -NBe "CREATE DATABASE IF NOT EXISTS {{ mysql_db }} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+  delegate_to: "{{ groups['mysql_gr'][0] }}"
+  run_once: true
+  changed_when: false
+
+- name: Create MySQL user for Ushahidi
+  shell: |
+    docker exec mysql mysql -uroot -p'{{ mysql_root_password }}' -NBe "CREATE USER IF NOT EXISTS '{{ mysql_app_user }}'@'%' IDENTIFIED BY '{{ mysql_app_password }}';"
+  delegate_to: "{{ groups['mysql_gr'][0] }}"
+  run_once: true
+  changed_when: false
+
+- name: Grant privileges to MySQL user on database
+  shell: |
+    docker exec mysql mysql -uroot -p'{{ mysql_root_password }}' -NBe "GRANT ALL PRIVILEGES ON {{ mysql_db }}.* TO '{{ mysql_app_user }}'@'%'; FLUSH PRIVILEGES;"
+  delegate_to: "{{ groups['mysql_gr'][0] }}"
+  run_once: true
+  changed_when: false
+
+- name: Render Ushahidi compose file
   template:
     src: docker-compose.yml.j2
     dest: /opt/ushahidi/docker-compose.yml
 
-- name: Up Ushahidi
+- name: Start Ushahidi container
   community.docker.docker_compose_v2:
     project_src: /opt/ushahidi
     state: present
