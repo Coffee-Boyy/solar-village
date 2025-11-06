@@ -10,7 +10,7 @@ services:
       BASE_URL: "{{ ushahidi_site_url }}"
       ENABLE_NGINX: "true"
       ENABLE_PLATFORM_TASKS: "false"
-      RUN_PLATFORM_MIGRATIONS: "{{ 'true' if inventory_hostname == groups['ushahidi_all'][0] else 'false' }}"
+      RUN_PLATFORM_MIGRATIONS: "{{ 'true' if inventory_hostname == groups['app_servers'][0] else 'false' }}"
 
       REDIS_HOST: redis
       CACHE_DRIVER: redis

@@ -3,17 +3,16 @@
     - role: base_hardening
     - role: docker_runtime
     - role: wireguard
-    - role: traefik
 
 - hosts: postgres
   roles:
-    - role: etcd
     - role: postgres
 
 - hosts: garage_all
   roles:
     - role: garage
 
-- hosts: ushahidi_all
+- hosts: app_servers
   roles:
+    - role: traefik
     - role: ushahidi

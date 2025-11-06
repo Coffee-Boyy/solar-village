@@ -7,8 +7,9 @@ restapi:
   listen: {{ wg_ip }}:8008
   connect_address: {{ wg_ip }}:8008
 
-etcd:
+etcd3:
   hosts: {% for host in groups['postgres'] %}{{ hostvars[host].wg_ip }}:2379{% if not loop.last %},{% endif %}{% endfor %}
+
 
 bootstrap:
   dcs:
@@ -48,8 +49,10 @@ bootstrap:
 postgresql:
   listen: {{ wg_ip }}:5432
   connect_address: {{ wg_ip }}:5432
-  data_dir: /home/postgres/pgdata
+  data_dir: {{ postgres_data_dir }}
   pgpass: /tmp/pgpass
+  bin_dir: {{ postgres_bin_dir }}
+  config_dir: {{ postgres_config_dir }}
   authentication:
     replication:
       username: replicator

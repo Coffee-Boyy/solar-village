@@ -1,9 +1,16 @@
 - name: Ensure ushahidi dir
   file: { path: /opt/ushahidi, state: directory }
 
+- name: "Install PostgreSQL client on database nodes"
+  apt:
+    name: postgresql-client-16
+    state: present
+  delegate_to: "{{ groups['postgres'][0] }}"
+  run_once: true
+
 - name: Create PostgreSQL database for Ushahidi
   shell: |
-    docker exec postgres psql -U postgres -c "CREATE DATABASE {{ postgres_db }};" 2>/dev/null || echo "Database may already exist"
+    psql -h {{ postgres_vip }} -U postgres -c "CREATE DATABASE {{ postgres_db }};" 2>/dev/null || echo "Database may already exist"
   delegate_to: "{{ groups['postgres'][0] }}"
   run_once: true
   changed_when: false
@@ -12,7 +19,7 @@
 
 - name: Create PostgreSQL user for Ushahidi
   shell: |
-    docker exec postgres psql -U postgres -c "CREATE USER {{ postgres_app_user }} WITH PASSWORD '{{ postgres_app_password }}';" 2>/dev/null || echo "User may already exist"
+    psql -h {{ postgres_vip }} -U postgres -c "CREATE USER {{ postgres_app_user }} WITH PASSWORD '{{ postgres_app_password }}';" 2>/dev/null || echo "User may already exist"
   delegate_to: "{{ groups['postgres'][0] }}"
   run_once: true
   changed_when: false
@@ -21,7 +28,7 @@
 
 - name: Grant privileges to PostgreSQL user on database
   shell: |
-    docker exec postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE {{ postgres_db }} TO {{ postgres_app_user }};"
+    psql -h {{ postgres_vip }} -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE {{ postgres_db }} TO {{ postgres_app_user }};"
   delegate_to: "{{ groups['postgres'][0] }}"
   run_once: true
   changed_when: false

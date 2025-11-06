@@ -1,0 +1,10 @@
+ETCD_NAME={{ inventory_hostname }}
+ETCD_DATA_DIR={{ etcd_data_dir }}
+ETCD_LISTEN_CLIENT_URLS=http://{{ wg_ip }}:2379,http://127.0.0.1:2379
+ETCD_ADVERTISE_CLIENT_URLS=http://{{ wg_ip }}:2379
+ETCD_LISTEN_PEER_URLS=http://{{ wg_ip }}:2380
+ETCD_INITIAL_ADVERTISE_PEER_URLS=http://{{ wg_ip }}:2380
+ETCD_INITIAL_CLUSTER_TOKEN={{ etcd_cluster_token }}
+ETCD_INITIAL_CLUSTER={{ etcd_initial_cluster }}
+ETCD_INITIAL_CLUSTER_STATE={{ etcd_initial_cluster_state }}
+

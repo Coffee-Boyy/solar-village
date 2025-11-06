@@ -17,8 +17,8 @@ wg_port: 51820
 wg_ip_offset: 2
 wg_endpoint: "{{ ansible_host }}:{{ wg_port }}"
 
-# PostgreSQL
-postgres_image: "postgres:16"
+# PostgreSQL (bare metal installation)
+postgres_version: "18"
 postgres_cluster_name: "postgres"
 postgres_superuser_password: "changemestrong"
 postgres_admin_password: "changemestrong"
@@ -26,9 +26,13 @@ postgres_replicator_password: "STRONG_REPLICATOR_PASS"
 postgres_app_user: "ushahidi"
 postgres_app_password: "changemestrong"
 postgres_db: "ushahidi"
+postgres_data_dir: "/var/lib/postgresql/18/data"
+postgres_config_dir: "/etc/postgresql/18/main"
+postgres_bin_dir: "/usr/lib/postgresql/18/bin"
 
-# Patroni (Spilo includes PostgreSQL and Patroni)
-patroni_image: "ghcr.io/zalando/postgres-operator/spilo-16:3.0-p1"
+# Patroni (bare metal installation)
+patroni_config_path: "/etc/patroni/patroni.yml"
+patroni_restapi_port: 8008
 
 # PostgreSQL VIP Configuration
 postgres_vip: "10.20.0.10"
@@ -37,8 +41,10 @@ postgres_vrrp_router_id: 51
 postgres_vrrp_priority: 100
 postgres_vrrp_password: "VRRP_PASSWORD_CHANGE"
 
-# etcd
-etcd_image: "quay.io/coreos/etcd:v3.5.9"
+# etcd (bare metal installation)
+etcd_version: "3.5.9"
+etcd_data_dir: "/var/lib/etcd"
+etcd_config_dir: "/etc/etcd"
 etcd_cluster_token: "postgres-etcd-cluster"
 
 # Garage

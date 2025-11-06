@@ -1,0 +1,16 @@
+[Unit]
+Description=Runners to orchestrate a high-availability PostgreSQL
+After=syslog.target network.target
+
+[Service]
+Type=notify
+User=postgres
+Group=postgres
+ExecStart=/usr/bin/patroni {{ patroni_config_path }}
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutSec=0
+
+[Install]
+WantedBy=multi-user.target

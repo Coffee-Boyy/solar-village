@@ -45,9 +45,10 @@ ansible --version
 Create four Ubuntu 24.04 VMs (2 CPU / 4 GB RAM / 30 GB disk):
 
 ```bash
-multipass launch 24.04 --name node-a --cpus 4 --memory 4G --disk 30G
-multipass launch 24.04 --name node-b --cpus 4 --memory 4G --disk 30G
-multipass launch 24.04 --name node-c --cpus 4 --memory 4G --disk 30G
+multipass launch 24.04 --name node-a --cpus 2 --memory 4G --disk 30G
+multipass launch 24.04 --name node-db-a --cpus 2 --memory 4G --disk 30G
+multipass launch 24.04 --name node-db-b --cpus 2 --memory 4G --disk 30G
+multipass launch 24.04 --name node-db-c --cpus 2 --memory 4G --disk 30G
 
 multipass list
 ```
@@ -67,7 +68,7 @@ ssh-keygen -t ed25519
 Inject your local SSH public key into each VM:
 
 ```bash
-for h in node-a node-b node-c; do
+for h in node-a node-db-a node-db-b node-db-c; do
   multipass exec $h -- bash -c "mkdir -p /home/ubuntu/.ssh && chmod 700 /home/ubuntu/.ssh && echo '$(cat ~/.ssh/id_ed25519.pub)' >> /home/ubuntu/.ssh/authorized_keys && chmod 600 /home/ubuntu/.ssh/authorized_keys"
 done
 ```
@@ -81,28 +82,28 @@ done
 ```ini
 [all]
 node-a ansible_host=<IP_NODE_A>
-node-b ansible_host=<IP_NODE_B>
-node-c ansible_host=<IP_NODE_C>
+node-db-a ansible_host=<IP_DB_NODE_A> garage_storage_capacity=10G garage_zone=sfo1
+node-db-b ansible_host=<IP_DB_NODE_B> garage_storage_capacity=10G garage_zone=sfo1
+node-db-c ansible_host=<IP_DB_NODE_C> garage_storage_capacity=10G garage_zone=sfo1
 
 [wg_all]
 node-a
-node-b
-node-c
+node-db-a
+node-db-b
+node-db-c
 
-[mysql_gr]
-node-a
-node-b
-node-c
+[postgres]
+node-db-a
+node-db-b
+node-db-c
 
 [garage_all]
-node-a
-node-b
-node-c
+node-db-a
+node-db-b
+node-db-c
 
-[ushahidi_all]
+[app_servers]
 node-a
-node-b
-node-c
 ```
 
 Replace each `<IP_…>` with the actual Multipass IPs.
@@ -189,8 +190,7 @@ Full API documentation for Ushahidi V5 is available here: https://documenter.get
 Stop containers and delete VMs:
 
 ```bash
-ansible -i infra/ansible/inventories/local/hosts.ini all -m command -a "docker ps -q | xargs -r docker stop"
-multipass delete --purge node-a node-b node-c
+multipass delete --purge node-a node-db-a node-db-b node-db-c
 ```
 
 ---

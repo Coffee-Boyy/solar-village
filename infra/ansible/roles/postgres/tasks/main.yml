@@ -1,97 +1,281 @@
+---
+# PostgreSQL Patroni Bare Metal Installation Tasks
+
+# === Phase 0: Install keepalived (required for VIP management) ===
 - name: "Install keepalived (required for VIP management)"
   apt:
     name: keepalived
     state: present
     update_cache: yes
 
-- name: "Create postgres app dir"
-  file: { path: /opt/postgres, state: directory }
+# === Phase 1: Install PostgreSQL 18 ===
+- name: "Install required packages for PostgreSQL"
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: yes
 
-- name: "Ensure subdirs exist"
+- name: "Download PostgreSQL APT key"
+  get_url:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    dest: /tmp/postgresql.asc
+    mode: "0644"
+
+- name: "Create keyring directory"
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: "Import PostgreSQL GPG key to keyring"
+  command: gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg /tmp/postgresql.asc
+  args:
+    creates: /etc/apt/keyrings/postgresql.gpg
+
+- name: "Remove temporary key file"
+  file:
+    path: /tmp/postgresql.asc
+    state: absent
+
+- name: "Get distribution codename"
+  shell: lsb_release -cs
+  register: dist_codename
+  changed_when: false
+
+- name: "Add PostgreSQL official APT repository"
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt {{ dist_codename.stdout }}-pgdg main"
+    filename: postgresql
+    state: present
+    update_cache: yes
+
+- name: "Install PostgreSQL 18 and contrib packages"
+  apt:
+    name:
+      - postgresql-18
+      - postgresql-contrib-18
+      - postgresql-client-18
+    state: present
+
+- name: "Stop PostgreSQL service (Patroni will manage it)"
+  systemd:
+    name: postgresql@18-main
+    state: stopped
+    enabled: false
+
+- name: "Ensure PostgreSQL data directory exists"
+  file:
+    path: "{{ postgres_data_dir }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: "0700"
+  ignore_errors: yes
+
+# === Phase 2: Install etcd ===
+- name: "Create etcd user"
+  user:
+    name: etcd
+    system: yes
+    shell: /bin/false
+    home: "{{ etcd_data_dir }}"
+    create_home: yes
+
+- name: "Create etcd directories"
   file:
     path: "{{ item }}"
     state: directory
-    owner: 999
-    group: 999
+    owner: etcd
+    group: etcd
     mode: "0755"
   loop:
-    - /opt/postgres/data
-    - /opt/postgres/config
+    - "{{ etcd_data_dir }}"
+    - "{{ etcd_config_dir }}"
+    - /usr/local/bin
+
+- name: "Download etcd binary"
+  get_url:
+    url: "https://github.com/etcd-io/etcd/releases/download/v3.5.24/etcd-v3.5.24-linux-amd64.tar.gz"
+    dest: /tmp/etcd-v3.5.24-linux-amd64.tar.gz
+    mode: "0644"
+
+- name: "Extract etcd binary"
+  unarchive:
+    src: /tmp/etcd-v3.5.24-linux-amd64.tar.gz
+    dest: /tmp
+    remote_src: yes
+    creates: /tmp/etcd-v3.5.24-linux-amd64/etcd
+
+- name: "Copy etcd binaries"
+  copy:
+    src: "{{ item }}"
+    dest: /usr/local/bin/{{ item | basename }}
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: yes
+  loop:
+    - /tmp/etcd-v3.5.24-linux-amd64/etcd
+    - /tmp/etcd-v3.5.24-linux-amd64/etcdctl
+
+- name: "Clean up etcd download"
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/etcd-v3.5.24-linux-amd64.tar.gz
+    - /tmp/etcd-v3.5.24-linux-amd64
+
+- name: "Build etcd initial cluster string"
+  set_fact:
+    etcd_initial_cluster: "{% for host in groups['postgres'] %}{{ host }}=http://{{ hostvars[host].wg_ip }}:2380{% if not loop.last %},{% endif %}{% endfor %}"
+
+- name: "Check if etcd cluster already exists"
+  shell: |
+    ETCDCTL_API=3 /usr/local/bin/etcdctl --endpoints=http://{{ wg_ip }}:2379 endpoint health 2>/dev/null || echo "NOT_FOUND"
+  register: etcd_cluster_check
+  changed_when: false
+  failed_when: false
+  ignore_errors: true
+
+- name: "Determine etcd initial cluster state"
+  set_fact:
+    etcd_initial_cluster_state: "{{ 'existing' if (etcd_cluster_check.stdout is defined and 'NOT_FOUND' not in etcd_cluster_check.stdout) else 'new' }}"
+
+- name: "Render etcd configuration file"
+  template:
+    src: etcd.conf.j2
+    dest: "{{ etcd_config_dir }}/etcd.conf"
+    mode: "0644"
+
+- name: "Render etcd systemd service"
+  template:
+    src: etcd.service.j2
+    dest: /etc/systemd/system/etcd.service
+    mode: "0644"
+
+- name: "Reload systemd daemon"
+  systemd:
+    daemon_reload: yes
+
+- name: "Enable and start etcd service"
+  systemd:
+    name: etcd
+    enabled: yes
+    state: started
+
+- name: "Wait for etcd to be ready"
+  wait_for:
+    host: "{{ wg_ip }}"
+    port: 2379
+    timeout: 60
+
+# === Phase 3: Install Patroni ===
+- name: "Install Patroni"
+  apt:
+    name:
+      - python3
+      - python3-pip
+      - python3-psycopg2
+      - python3-yaml
+      - python3-setuptools
+      - python3-etcd
+      - patroni
+    state: present
+
+- name: "Create Patroni configuration directory"
+  file:
+    path: /etc/patroni
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
 
 - name: "Determine if this is the initial primary node"
   set_fact:
     is_initial_primary: "{{ inventory_hostname == groups['postgres'][0] }}"
 
-# Check if cluster already exists (determine if bootstrap is needed)
-- name: "Try to check if Patroni cluster exists"
+- name: "Render Patroni configuration"
+  template:
+    src: patroni.yml.j2
+    dest: "{{ patroni_config_path }}"
+    mode: "0644"
+
+- name: "Check if Patroni cluster exists"
   shell: |
-    docker exec postgres patronictl -c /etc/patroni/patroni.yml list 2>/dev/null || echo "NOT_FOUND"
+    patronictl -c {{ patroni_config_path }} list 2>/dev/null || echo "NOT_FOUND"
   register: patroni_cluster_check
   changed_when: false
   failed_when: false
   ignore_errors: true
 
-- name: "Determine if bootstrap is needed"
-  set_fact:
-    patroni_needs_bootstrap: "{{ is_initial_primary and 'NOT_FOUND' in patroni_cluster_check.stdout }}"
-
-- name: "Render Patroni configuration"
+- name: "Render PostgreSQL configuration"
   template:
-    src: patroni.yml.j2
-    dest: /opt/postgres/config/patroni.yml
+    src: postgresql.conf.j2
+    dest: "{{ postgres_config_dir }}/postgresql.conf"
+    mode: "0644"
+  notify: restart postgresql
+
+- name: "Render pg_hba.conf"
+  template:
+    src: pg_hba.conf.j2
+    dest: "{{ postgres_config_dir }}/pg_hba.conf"
+    mode: "0644"
+  notify: restart postgresql
+
+- name: "Render Patroni systemd service"
+  template:
+    src: patroni.service.j2
+    dest: /etc/systemd/system/patroni.service
     mode: "0644"
 
-# PostgreSQL configuration is managed by Spilo via Patroni config
+- name: "Reload systemd daemon"
+  systemd:
+    daemon_reload: yes
 
-- name: "Render docker-compose for postgres"
-  template:
-    src: docker-compose.yml.j2
-    dest: /opt/postgres/docker-compose.yml
-
-- name: "Start postgres and patroni containers"
-  community.docker.docker_compose_v2:
-    project_src: /opt/postgres
-    state: present
-    pull: always
-
-- name: "Wait for PostgreSQL to be ready"
-  shell: docker exec postgres pg_isready -U postgres
-  register: postgres_ready
-  retries: 60
-  until: postgres_ready.rc == 0
-  changed_when: false
-  delay: 10
+- name: "Enable and start Patroni service"
+  systemd:
+    name: patroni
+    enabled: yes
+    state: started
 
 - name: "Wait for Patroni REST API to be ready"
   wait_for:
     host: "{{ wg_ip }}"
     port: 8008
     timeout: 60
-    delay: 5
+
+- name: "Wait for PostgreSQL to be ready"
+  shell: pg_isready -U postgres -h {{ wg_ip }}
+  register: postgres_ready
+  retries: 60
+  until: postgres_ready.rc == 0
+  changed_when: false
 
 - name: "Wait for cluster to be initialized (Patroni bootstraps automatically)"
   when: is_initial_primary
   shell: |
-    docker exec postgres patronictl -c /etc/patroni/patroni.yml list 2>/dev/null | grep -q "{{ postgres_cluster_name }}" || echo "NOT_READY"
+    patronictl -c {{ patroni_config_path }} list 2>/dev/null | grep -q "{{ postgres_cluster_name }}" || echo "NOT_READY"
   register: cluster_ready
   retries: 30
   until: "'NOT_READY' not in cluster_ready.stdout"
   changed_when: false
-  delay: 10
 
 - name: "Wait for node to join cluster"
   shell: |
-    docker exec postgres patronictl -c /etc/patroni/patroni.yml list 2>/dev/null | grep -q "{{ inventory_hostname }}" || echo "NOT_JOINED"
+    patronictl -c {{ patroni_config_path }} list 2>/dev/null | grep -q "{{ inventory_hostname }}" || echo "NOT_JOINED"
   register: node_joined
   retries: 30
   until: "'NOT_JOINED' not in node_joined.stdout"
   changed_when: false
-  delay: 10
 
 - name: "Report cluster status"
   shell: |
-    docker exec postgres patronictl -c /etc/patroni/patroni.yml list
+    patronictl -c {{ patroni_config_path }} list
   register: patroni_status
   changed_when: false
   failed_when: false
-
