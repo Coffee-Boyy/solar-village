@@ -16,12 +16,12 @@ services:
       CACHE_DRIVER: redis
       QUEUE_DRIVER: redis
 
-      DB_CONNECTION: "mysql"
-      DB_HOST: {{ wg_ip }}
-      DB_PORT: 3306
-      DB_DATABASE: "{{ mysql_db }}"
-      DB_USERNAME: "{{ mysql_app_user }}"
-      DB_PASSWORD: "{{ mysql_app_password }}"
+      DB_CONNECTION: "pgsql"
+      DB_HOST: {{ postgres_vip }}
+      DB_PORT: 5432
+      DB_DATABASE: "{{ postgres_db }}"
+      DB_USERNAME: "{{ postgres_app_user }}"
+      DB_PASSWORD: "{{ postgres_app_password }}"
 
       S3_BUCKET: "{{ garage_bucket_name }}"
       S3_ENDPOINT: "http://{{ wg_ip }}:3900"

@@ -4,11 +4,11 @@
     name: [ "ufw", "fail2ban", "jq" ]
     state: present
 
-- name: "UFW allow 80/443 and MySQL GR port (internal only by default)"
+- name: "UFW allow 80/443"
   ufw:
     rule: allow
     port: "{{ item }}"
-  loop: [ "80", "443" ]  # expose public; 3306/33061 should be private/VPN in production
+  loop: [ "80", "443" ]
 
 - name: Allow SSH (OpenSSH)
   ufw:

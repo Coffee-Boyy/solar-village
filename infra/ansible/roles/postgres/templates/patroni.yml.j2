@@ -1,0 +1,93 @@
+scope: {{ postgres_cluster_name }}
+namespace: /{{ postgres_cluster_name }}
+
+name: {{ inventory_hostname }}
+
+restapi:
+  listen: {{ wg_ip }}:8008
+  connect_address: {{ wg_ip }}:8008
+
+etcd:
+  hosts: {% for host in groups['postgres'] %}{{ hostvars[host].wg_ip }}:2379{% if not loop.last %},{% endif %}{% endfor %}
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 30
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        wal_level: replica
+        hot_standby: "on"
+        wal_keep_size: 128MB
+        max_wal_senders: 5
+        max_replication_slots: 5
+        max_connections: 100
+        max_worker_processes: 8
+        wal_log_hints: "on"
+        track_commit_timestamp: "on"
+
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+
+  pg_hba:
+    - host replication replicator 0.0.0.0/0 md5
+    - host all all 0.0.0.0/0 md5
+
+  users:
+    admin:
+      password: {{ postgres_admin_password }}
+      options:
+        - createrole
+        - createdb
+
+postgresql:
+  listen: {{ wg_ip }}:5432
+  connect_address: {{ wg_ip }}:5432
+  data_dir: /home/postgres/pgdata
+  pgpass: /tmp/pgpass
+  authentication:
+    replication:
+      username: replicator
+      password: {{ postgres_replicator_password }}
+    superuser:
+      username: postgres
+      password: {{ postgres_superuser_password }}
+  parameters:
+    unix_socket_directories: '/var/run/postgresql'
+
+keepalived:
+  vrrp_instance_name: {{ postgres_cluster_name }}
+  vrrp_vip: {{ postgres_vip }}
+  vrrp_vip_interface: {{ wg_iface }}
+  vrrp_vip_priority: {{ postgres_vip_priority | default(100) }}
+  vrrp_vip_cidr: 32
+  vrrp_vip_garp_interval: 5
+  vrrp_vip_garp_refresh: 0
+  vrrp_vip_garp_refresh_repeat: 1
+  vrrp_vip_garp_lower_prio_delay: 0
+  vrrp_vip_garp_lower_prio_repeat: 1
+  vrrp_vip_skip_arp: false
+  vrrp_interface: {{ wg_iface }}
+  vrrp_router_id: {{ postgres_vrrp_router_id }}
+  vrrp_group: 100
+  vrrp_priority: {{ postgres_vrrp_priority | default(100) }}
+  vrrp_advert_int: 1
+  vrrp_authentication:
+    - type: PASS
+      password: {{ postgres_vrrp_password }}
+  vrrp_unicast_peers:
+{% for host in groups['postgres'] %}
+    - {{ hostvars[host].wg_ip }}
+{% endfor %}
+
+tags:
+  nofailover: false
+  noloadbalance: false
+  clonefrom: false
+  nosync: false
+

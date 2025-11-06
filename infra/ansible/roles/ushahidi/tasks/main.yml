@@ -1,26 +1,32 @@
 - name: Ensure ushahidi dir
   file: { path: /opt/ushahidi, state: directory }
 
-- name: Create MySQL database for Ushahidi
+- name: Create PostgreSQL database for Ushahidi
   shell: |
-    docker exec mysql mysql -uroot -p'{{ mysql_root_password }}' -NBe "CREATE DATABASE IF NOT EXISTS {{ mysql_db }} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-  delegate_to: "{{ groups['mysql_gr'][0] }}"
+    docker exec postgres psql -U postgres -c "CREATE DATABASE {{ postgres_db }};" 2>/dev/null || echo "Database may already exist"
+  delegate_to: "{{ groups['postgres'][0] }}"
   run_once: true
   changed_when: false
+  environment:
+    PGPASSWORD: "{{ postgres_superuser_password }}"
 
-- name: Create MySQL user for Ushahidi
+- name: Create PostgreSQL user for Ushahidi
   shell: |
-    docker exec mysql mysql -uroot -p'{{ mysql_root_password }}' -NBe "CREATE USER IF NOT EXISTS '{{ mysql_app_user }}'@'%' IDENTIFIED BY '{{ mysql_app_password }}';"
-  delegate_to: "{{ groups['mysql_gr'][0] }}"
+    docker exec postgres psql -U postgres -c "CREATE USER {{ postgres_app_user }} WITH PASSWORD '{{ postgres_app_password }}';" 2>/dev/null || echo "User may already exist"
+  delegate_to: "{{ groups['postgres'][0] }}"
   run_once: true
   changed_when: false
+  environment:
+    PGPASSWORD: "{{ postgres_superuser_password }}"
 
-- name: Grant privileges to MySQL user on database
+- name: Grant privileges to PostgreSQL user on database
   shell: |
-    docker exec mysql mysql -uroot -p'{{ mysql_root_password }}' -NBe "GRANT ALL PRIVILEGES ON {{ mysql_db }}.* TO '{{ mysql_app_user }}'@'%'; FLUSH PRIVILEGES;"
-  delegate_to: "{{ groups['mysql_gr'][0] }}"
+    docker exec postgres psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE {{ postgres_db }} TO {{ postgres_app_user }};"
+  delegate_to: "{{ groups['postgres'][0] }}"
   run_once: true
   changed_when: false
+  environment:
+    PGPASSWORD: "{{ postgres_superuser_password }}"
 
 - name: Check if Garage bucket exists
   shell: docker exec garage /garage bucket info {{ garage_bucket_name }}

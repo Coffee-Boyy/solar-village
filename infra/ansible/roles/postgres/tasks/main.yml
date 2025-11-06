@@ -1,0 +1,97 @@
+- name: "Install keepalived (required for VIP management)"
+  apt:
+    name: keepalived
+    state: present
+    update_cache: yes
+
+- name: "Create postgres app dir"
+  file: { path: /opt/postgres, state: directory }
+
+- name: "Ensure subdirs exist"
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: 999
+    group: 999
+    mode: "0755"
+  loop:
+    - /opt/postgres/data
+    - /opt/postgres/config
+
+- name: "Determine if this is the initial primary node"
+  set_fact:
+    is_initial_primary: "{{ inventory_hostname == groups['postgres'][0] }}"
+
+# Check if cluster already exists (determine if bootstrap is needed)
+- name: "Try to check if Patroni cluster exists"
+  shell: |
+    docker exec postgres patronictl -c /etc/patroni/patroni.yml list 2>/dev/null || echo "NOT_FOUND"
+  register: patroni_cluster_check
+  changed_when: false
+  failed_when: false
+  ignore_errors: true
+
+- name: "Determine if bootstrap is needed"
+  set_fact:
+    patroni_needs_bootstrap: "{{ is_initial_primary and 'NOT_FOUND' in patroni_cluster_check.stdout }}"
+
+- name: "Render Patroni configuration"
+  template:
+    src: patroni.yml.j2
+    dest: /opt/postgres/config/patroni.yml
+    mode: "0644"
+
+# PostgreSQL configuration is managed by Spilo via Patroni config
+
+- name: "Render docker-compose for postgres"
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/postgres/docker-compose.yml
+
+- name: "Start postgres and patroni containers"
+  community.docker.docker_compose_v2:
+    project_src: /opt/postgres
+    state: present
+    pull: always
+
+- name: "Wait for PostgreSQL to be ready"
+  shell: docker exec postgres pg_isready -U postgres
+  register: postgres_ready
+  retries: 60
+  until: postgres_ready.rc == 0
+  changed_when: false
+  delay: 10
+
+- name: "Wait for Patroni REST API to be ready"
+  wait_for:
+    host: "{{ wg_ip }}"
+    port: 8008
+    timeout: 60
+    delay: 5
+
+- name: "Wait for cluster to be initialized (Patroni bootstraps automatically)"
+  when: is_initial_primary
+  shell: |
+    docker exec postgres patronictl -c /etc/patroni/patroni.yml list 2>/dev/null | grep -q "{{ postgres_cluster_name }}" || echo "NOT_READY"
+  register: cluster_ready
+  retries: 30
+  until: "'NOT_READY' not in cluster_ready.stdout"
+  changed_when: false
+  delay: 10
+
+- name: "Wait for node to join cluster"
+  shell: |
+    docker exec postgres patronictl -c /etc/patroni/patroni.yml list 2>/dev/null | grep -q "{{ inventory_hostname }}" || echo "NOT_JOINED"
+  register: node_joined
+  retries: 30
+  until: "'NOT_JOINED' not in node_joined.stdout"
+  changed_when: false
+  delay: 10
+
+- name: "Report cluster status"
+  shell: |
+    docker exec postgres patronictl -c /etc/patroni/patroni.yml list
+  register: patroni_status
+  changed_when: false
+  failed_when: false
+

@@ -1,0 +1,45 @@
+- name: "Create etcd app dir"
+  file: { path: /opt/etcd, state: directory }
+
+- name: "Ensure etcd data dir exists"
+  file:
+    path: /opt/etcd/data
+    state: directory
+    owner: 1000
+    group: 1000
+    mode: "0755"
+
+- name: "Build etcd initial cluster string"
+  set_fact:
+    etcd_initial_cluster: "{% for host in groups['postgres'] %}{{ host }}=http://{{ hostvars[host].wg_ip }}:2380{% if not loop.last %},{% endif %}{% endfor %}"
+
+- name: "Check if etcd cluster already exists"
+  shell: |
+    docker exec etcd etcdctl endpoint health 2>/dev/null || echo "NOT_FOUND"
+  register: etcd_cluster_check
+  changed_when: false
+  failed_when: false
+  ignore_errors: true
+
+- name: "Determine etcd initial cluster state"
+  set_fact:
+    etcd_initial_cluster_state: "{{ 'existing' if (etcd_cluster_check.stdout is defined and 'NOT_FOUND' not in etcd_cluster_check.stdout) else 'new' }}"
+
+- name: "Render docker-compose for etcd"
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/etcd/docker-compose.yml
+
+- name: "Start etcd container"
+  community.docker.docker_compose_v2:
+    project_src: /opt/etcd
+    state: present
+    pull: always
+
+- name: "Wait for etcd to be ready"
+  wait_for:
+    host: "{{ wg_ip }}"
+    port: 2379
+    timeout: 60
+    delay: 5
+

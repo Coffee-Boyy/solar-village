@@ -17,15 +17,29 @@ wg_port: 51820
 wg_ip_offset: 2
 wg_endpoint: "{{ ansible_host }}:{{ wg_port }}"
 
-# MySQL
-mysql_root_password: "changemestrong"
-mysql_app_user: "ushahidi"
-mysql_app_password: "changemestrong"
-mysql_db: "ushahidi"
+# PostgreSQL
+postgres_image: "postgres:16"
+postgres_cluster_name: "postgres"
+postgres_superuser_password: "changemestrong"
+postgres_admin_password: "changemestrong"
+postgres_replicator_password: "STRONG_REPLICATOR_PASS"
+postgres_app_user: "ushahidi"
+postgres_app_password: "changemestrong"
+postgres_db: "ushahidi"
 
-pxc_image: "percona/percona-xtradb-cluster:8.4"
-pxc_cluster_name: "pxc-8-4"
-xtrabackup_password: "STRONG_XB_PASS"
+# Patroni (Spilo includes PostgreSQL and Patroni)
+patroni_image: "ghcr.io/zalando/postgres-operator/spilo-16:3.0-p1"
+
+# PostgreSQL VIP Configuration
+postgres_vip: "10.20.0.10"
+postgres_vip_priority: 100
+postgres_vrrp_router_id: 51
+postgres_vrrp_priority: 100
+postgres_vrrp_password: "VRRP_PASSWORD_CHANGE"
+
+# etcd
+etcd_image: "quay.io/coreos/etcd:v3.5.9"
+etcd_cluster_token: "postgres-etcd-cluster"
 
 # Garage
 garage_image: "dxflrs/garage:v1.0.0"

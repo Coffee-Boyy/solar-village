@@ -8,8 +8,6 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: mysqldevelopment
       MYSQL_DATABASE: ushahidi
-      MYSQL_USER: mysqldevelopment
-      MYSQL_PASSWORD: mysqldevelopment
     ports:
       - "3306:3306"
     volumes:
@@ -33,7 +31,7 @@ services:
       - DATABASE_HOST=mysql
       - DATABASE_PORT=3306
       - DATABASE_NAME=django_db
-      - DATABASE_USER=mysqldevelopment
+      - DATABASE_USER=root
       - DATABASE_PASSWORD=mysqldevelopment
     ports:
       - "8000:8000"
@@ -63,7 +61,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_DATABASE: "ushahidi"
-      DB_USERNAME: "mysqldevelopment"
+      DB_USERNAME: "root"
       DB_PASSWORD: "mysqldevelopment"
       # S3 settings optional for local dev - can be added later if needed
       S3_USE_PATH_STYLE_ENDPOINT: "true"

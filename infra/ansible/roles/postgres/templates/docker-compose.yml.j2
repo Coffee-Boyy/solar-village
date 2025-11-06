@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: {{ patroni_image }}
+    container_name: postgres
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_ADMIN
+    volumes:
+      - postgres_data:/home/postgres/pgdata
+      - ./config/patroni.yml:/etc/patroni/patroni.yml:ro
+    environment:
+      - PATRONI_CONFIGURATION_FILE=/etc/patroni/patroni.yml
+      - SCOPE={{ postgres_cluster_name }}
+      - WAL_E_BACKUP_PUSH=false
+      - USE_WALG_BACKUP=false
+
+volumes:
+  postgres_data:
+

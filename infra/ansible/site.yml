@@ -5,9 +5,10 @@
     - role: wireguard
     - role: traefik
 
-- hosts: mysql_gr
+- hosts: postgres
   roles:
-    - role: mysql_gr
+    - role: etcd
+    - role: postgres
 
 - hosts: garage_all
   roles:
